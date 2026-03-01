@@ -12,45 +12,40 @@ final class Parser
      */
     public function parse(string $inputPath, string $outputPath): void
     {
-        $handle = fopen($inputPath, 'rb');
-        if (!$handle) {
+        $content = file_get_contents($inputPath);
+        if ($content === false) {
             throw new RuntimeException("Could not open input file: $inputPath");
+        }
+
+        $lines = explode("\n", $content);
+        unset($content);
+        if (end($lines) === "") {
+            array_pop($lines);
         }
 
         $visits = [];
 
-        while (($line = fgets($handle)) !== false) {
-            $line = rtrim($line, "\r\n");
-            if ($line === '') {
-                continue;
-            }
-
+        foreach ($lines as $line) {
             $commaPos = strpos($line, ',');
-            if ($commaPos === false) {
-                continue;
+            $pathStart = strpos($line, '/', 8);
+
+            if ($pathStart !== false && $pathStart < $commaPos) {
+                $path = substr($line, $pathStart, $commaPos - $pathStart);
+            } else {
+                $path = '/';
             }
 
-            // Extract path directly from line starting from after ://
-            $pathStart = strpos($line, '/', 8); 
-            $path = ($pathStart !== false && $pathStart < $commaPos) 
-                ? substr($line, $pathStart, $commaPos - $pathStart) 
-                : '/';
+            $date = substr($line, $commaPos + 1, 10);
 
-            $date = substr($line, $commaPos + 1, 10); //YYYY-MM-DD
-
-            if (!isset($visits[$path])) {
-                $visits[$path] = [$date => 1];
-            } elseif (!isset($visits[$path][$date])) {
-                $visits[$path][$date] = 1;
-            } else {
+            if (isset($visits[$path][$date])) {
                 $visits[$path][$date]++;
+            } else {
+                $visits[$path][$date] = 1;
             }
         }
 
-        fclose($handle);
-
-        foreach ($visits as $path => $dates) {
-            ksort($visits[$path]);
+        foreach ($visits as &$dates) {
+            ksort($dates);
         }
 
         file_put_contents(
