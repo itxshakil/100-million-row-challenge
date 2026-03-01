@@ -30,30 +30,21 @@ final class Parser
                 continue;
             }
 
-            $url = substr($line, 0, $commaPos);
-            $timestamp = substr($line, $commaPos + 1);
+            // Extract path directly from line starting from after ://
+            $pathStart = strpos($line, '/', 8); 
+            $path = ($pathStart !== false && $pathStart < $commaPos) 
+                ? substr($line, $pathStart, $commaPos - $pathStart) 
+                : '/';
 
-            // Manual path extraction from URL (find the first '/' after "://")
-            $path = '/';
-            $protoEnd = strpos($url, '://');
-            if ($protoEnd !== false) {
-                $pathStart = strpos($url, '/', $protoEnd + 3);
-                if ($pathStart !== false) {
-                    $path = substr($url, $pathStart);
-                }
-            }
-
-            $date = substr($timestamp, 0, 10); //YYYY-MM-DD
+            $date = substr($line, $commaPos + 1, 10); //YYYY-MM-DD
 
             if (!isset($visits[$path])) {
-                $visits[$path] = [];
+                $visits[$path] = [$date => 1];
+            } elseif (!isset($visits[$path][$date])) {
+                $visits[$path][$date] = 1;
+            } else {
+                $visits[$path][$date]++;
             }
-
-            if (!isset($visits[$path][$date])) {
-                $visits[$path][$date] = 0;
-            }
-
-            $visits[$path][$date]++;
         }
 
         fclose($handle);
